@@ -35,10 +35,14 @@ psql "$DATABASE_URL" -f db/migrations/001_init_schema.sql
 
 
 ## Commands
-- Fetches
+- Fetch from RuneScape
 ```Bash
 curl -X GET "http://127.0.0.1:8000/players/<PLAYER_NAME>/hiscores"
 curl -X POST "http://127.0.0.1:8000/players/<PLAYER_NAME>/hiscores/snapshots"
+```
+
+- Fetch from RunePy
+```Bash
 curl -X GET "http://127.0.0.1:8000/players/<PLAYER_NAME>/stats/changes?window=24h"
 curl -X GET "http://127.0.0.1:8000/players/<PLAYER_NAME>/stats/changes?window=7d"
 curl -X GET "http://127.0.0.1:8000/players/<PLAYER_NAME>/stats/changes?window=30d"
