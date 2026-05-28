@@ -1,0 +1,8 @@
+fastapi[standard]==0.136.1      # Web framework for building APIs
+SQLAlchemy==2.0.50              # Python SQL toolkit and ORM for database modeling and queries
+psycopg==3.3.4                  # API framework with batteries included
+pytest==9.0.3                   # Testing framework
+pytest-asyncio==1.4.0           # Adds async support to pytest
+black==26.3.1                   # Code formatter for consistent Python style
+ruff==0.15.12                   # Fast linter + formatter replacement for multiple tools
+python-dotenv==1.2.2            # Loads .env configuration files
