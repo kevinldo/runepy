@@ -19,6 +19,11 @@ The project fetches player hiscores from RuneScape's hiscore API and stores them
   - Deploy using Kubernetes-lite service (coolify, etc.)
 
 
+## Info
+DB schema to handle fetch from RuneScape
+<img width="1673" height="544" alt="image" src="https://github.com/user-attachments/assets/67ebb983-f479-42ad-87bd-150a33d134e8" />
+
+
 ## Development
 This project usees VSCode's devcontainers to seemlessly init a dev environment with minimal setup.
 
