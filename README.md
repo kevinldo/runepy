@@ -21,7 +21,7 @@ The project fetches player hiscores from RuneScape's hiscore API and stores them
 
 ## Info
 DB schema to handle and store fetches from RuneScape
-<img width="1673" height="544" alt="image" src="https://github.com/user-attachments/assets/67ebb983-f479-42ad-87bd-150a33d134e8" />
+<img width="1880" height="654" alt="image" src="https://github.com/user-attachments/assets/871000c0-8990-4856-9a70-f5a4a9283f83" />
 
 
 ## Development
