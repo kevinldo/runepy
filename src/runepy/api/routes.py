@@ -14,8 +14,13 @@ from runepy.clients.runescape import (
     RuneScapeClientError,
     RuneScapeUnavailableError,
 )
-from runepy.models.hiscores import PlayerHiscores
-from runepy.services.player_hiscores import fetch_and_store_player_hiscores
+from runepy.models.hiscores import PlayerHiscores, PlayerStatChanges
+from runepy.services.player_hiscores import (
+    fetch_and_store_player_hiscores,
+    InvalidStatsWindowError,
+    read_player_stat_changes,
+    StoredPlayerNotFoundError,
+)
 
 router = APIRouter()
 
@@ -50,3 +55,19 @@ async def player_hiscores(player_name: str) -> PlayerHiscores:
 @router.post("/players/{player_name}/hiscores/snapshots", response_model=PlayerHiscores)
 async def snapshot_player_hiscores(player_name: str) -> PlayerHiscores:
     return await _run_hiscore_action(fetch_and_store_player_hiscores, player_name)
+
+
+@router.get("/players/{player_name}/stats/changes", response_model=PlayerStatChanges)
+def player_stat_changes(player_name: str, window: str) -> PlayerStatChanges:
+    try:
+        return read_player_stat_changes(player_name, window)
+    except InvalidStatsWindowError:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported window. Use one of: 24h, 7d, 30d",
+        )
+    except StoredPlayerNotFoundError:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Player {player_name!r} has no stored snapshots",
+        )

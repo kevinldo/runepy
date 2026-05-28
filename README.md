@@ -6,8 +6,6 @@ The project fetches player hiscores from RuneScape's hiscore API and stores them
 
 ## TO-DO
 - 26-5-28 - Currently WIP. Broad tasks in-order
-  - Build requirements on endpoints needed for frontend
-  - Open endpoints utilizing FastAPI
   - Clean-up docstrings across project so far
   - Build/review test plan for backend + plan out TDD workflow
   - Write tests for backend + fix found bugs
@@ -41,6 +39,9 @@ psql "$DATABASE_URL" -f db/migrations/001_init_schema.sql
 ```Bash
 curl -X GET "http://127.0.0.1:8000/players/<PLAYER_NAME>/hiscores"
 curl -X POST "http://127.0.0.1:8000/players/<PLAYER_NAME>/hiscores/snapshots"
+curl -X GET "http://127.0.0.1:8000/players/<PLAYER_NAME>/stats/changes?window=24h"
+curl -X GET "http://127.0.0.1:8000/players/<PLAYER_NAME>/stats/changes?window=7d"
+curl -X GET "http://127.0.0.1:8000/players/<PLAYER_NAME>/stats/changes?window=30d"
 ```
 
 - DB Backup
