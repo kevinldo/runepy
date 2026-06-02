@@ -64,7 +64,7 @@ def player_stat_changes(player_name: str, window: str) -> PlayerStatChanges:
     except InvalidStatsWindowError:
         raise HTTPException(
             status_code=400,
-            detail="Unsupported window. Use one of: 24h, 7d, 30d, 6m, 1y",
+            detail="Unsupported window. Use one of: 24h, 7d, 30d, 3m, 6m, 1y",
         )
     except StoredPlayerNotFoundError:
         raise HTTPException(
