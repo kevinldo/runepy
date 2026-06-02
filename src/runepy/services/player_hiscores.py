@@ -10,6 +10,8 @@ STAT_CHANGE_WINDOWS = {
     "24h": "1 day",
     "7d": "7 days",
     "30d": "30 days",
+    "6m": "6 months",
+    "1y": "1 year",
 }
 
 
