@@ -5,7 +5,7 @@ A small RuneScape API client project.
 The project fetches player hiscores from RuneScape's hiscore API and stores them in a Postgres db. Then stats are available for presentation with a Next.js frontend.
 
 ## TO-DO
-- 26-5-28 - Currently WIP. Broad tasks in-order
+- WIP tasks
   - Clean-up docstrings across project so far
   - Build/review test plan for backend + plan out TDD workflow
   - Write tests for backend + fix found bugs
@@ -17,6 +17,8 @@ The project fetches player hiscores from RuneScape's hiscore API and stores them
   - Build deployment docker container
   - Build/deploy hosting server with cloudflare
   - Deploy using Kubernetes-lite service (coolify, etc.)
+- Bugs / Enhancements (yes, in the same bucket)
+  - Rate limit based on no xp gain since last fetch. Can ignore rank change
 
 
 ## Info
