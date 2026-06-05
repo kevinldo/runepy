@@ -6,13 +6,6 @@ RunePy v1 is a backend-only FastAPI and Postgres service for RuneScape hiscore t
 
 This test plan translates the v1 PRD into pytest-ready test cases. Each case is scoped so it can map cleanly to a pytest function, a small pytest group, a DB-backed integration test, or an explicit manual smoke check.
 
-Only `P1` and `P2` priorities are used:
-
-- `P1`: required for backend v1 confidence.
-- `P2`: useful only when it protects against a realistic setup, documentation, or operational regression.
-
-Frontend, hosting, Cloudflare, Coolify, Kubernetes-lite, and production deployment testing are out of scope for v1.
-
 ## Environment
 
 Expected local test environment:

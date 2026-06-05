@@ -38,7 +38,7 @@ For v1, developer experience matters more than polished end-user experience. The
 - Build the Next.js frontend.
 - Build a production deployment container.
 - Deploy to a hosted server.
-- Configure Cloudflare, Coolify, Kubernetes-lite, or other hosting workflows.
+- Configure Cloudflare, Coolify, or other hosting workflows.
 - Add authentication or user accounts.
 - Add scheduled background jobs.
 - Support every possible RuneScape hiscore variant.
