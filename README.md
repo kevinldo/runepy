@@ -6,8 +6,7 @@ The project fetches player hiscores from RuneScape's hiscore API and stores them
 
 ## TO-DO
 - WIP tasks
-  - Write tests for backend + fix found bugs
-  - Expand CI/CD for container deployment
+  - Expand CI/CD for container deployment + mock db testing
   - Enforce TDD workflow and git feature branch workflow
   - Set-up/integrate TypeScript+Next.JS frontend into devcontainer
   - Build frontend dev requirements
