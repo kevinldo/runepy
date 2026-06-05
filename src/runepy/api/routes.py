@@ -1,10 +1,4 @@
-"""FastAPI route definitions for the application.
-
-This module defines the public HTTP endpoints exposed by the app. Routes should
-coordinate request handling by calling client and database modules, while
-keeping external API logic and SQL persistence details in their dedicated
-modules.
-"""
+"""FastAPI route definitions for the application."""
 
 from fastapi import APIRouter, HTTPException
 
@@ -27,10 +21,26 @@ router = APIRouter()
 
 @router.get("/")
 def root():
+    """Return the application health status.
+
+    Returns:
+        dict[str, str]: The health status response body.
+    """
+
     return {"status": "ok"}
 
 
 async def _run_hiscore_action(action, player_name: str) -> PlayerHiscores:
+    """Run a hiscore action and translate client errors to HTTP responses.
+
+    Args:
+        action (Callable): Async function that fetches or stores player hiscores.
+        player_name (str): RuneScape display name to process.
+
+    Returns:
+        PlayerHiscores: Parsed hiscore data for the requested player.
+    """
+
     try:
         return await action(player_name)
     except PlayerNotFoundError:
@@ -49,16 +59,44 @@ async def _run_hiscore_action(action, player_name: str) -> PlayerHiscores:
 
 @router.get("/players/{player_name}/hiscores", response_model=PlayerHiscores)
 async def player_hiscores(player_name: str) -> PlayerHiscores:
+    """Fetch current hiscore data for a RuneScape player.
+
+    Args:
+        player_name (str): RuneScape display name to fetch.
+
+    Returns:
+        PlayerHiscores: Current hiscore data from RuneScape.
+    """
+
     return await _run_hiscore_action(fetch_player_hiscores, player_name)
 
 
 @router.post("/players/{player_name}/hiscores/snapshots", response_model=PlayerHiscores)
 async def snapshot_player_hiscores(player_name: str) -> PlayerHiscores:
+    """Fetch and store a RuneScape player's current hiscore data.
+
+    Args:
+        player_name (str): RuneScape display name to snapshot.
+
+    Returns:
+        PlayerHiscores: Current hiscore data saved for the player.
+    """
+
     return await _run_hiscore_action(fetch_and_store_player_hiscores, player_name)
 
 
 @router.get("/players/{player_name}/stats/changes", response_model=PlayerStatChanges)
 def player_stat_changes(player_name: str, window: str) -> PlayerStatChanges:
+    """Read stored stat changes for a RuneScape player.
+
+    Args:
+        player_name (str): RuneScape display name to read.
+        window (str): Rolling time window for comparing stored snapshots.
+
+    Returns:
+        PlayerStatChanges: Stat changes calculated within the requested window.
+    """
+
     try:
         return read_player_stat_changes(player_name, window)
     except InvalidStatsWindowError:

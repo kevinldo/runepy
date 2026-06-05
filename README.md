@@ -6,8 +6,6 @@ The project fetches player hiscores from RuneScape's hiscore API and stores them
 
 ## TO-DO
 - WIP tasks
-  - Clean-up docstrings across project so far
-  - Build/review test plan for backend + plan out TDD workflow
   - Write tests for backend + fix found bugs
   - Expand CI/CD for container deployment
   - Enforce TDD workflow and git feature branch workflow

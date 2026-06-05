@@ -1,9 +1,4 @@
-"""Application entrypoint.
-
-This module creates the FastAPI app, registers API routes, and holds app-level
-configuration such as metadata or startup/shutdown hooks. Run the service by
-pointing Uvicorn at `runepy.main:app`.
-"""
+"""Application entrypoint."""
 
 from fastapi import FastAPI
 

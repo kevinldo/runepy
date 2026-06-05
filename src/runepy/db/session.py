@@ -1,9 +1,4 @@
-"""Database connection setup for the application.
-
-This module is responsible for creating and configuring the SQLAlchemy engine
-and database sessions used by the rest of the app. Other modules should import
-session helpers from here instead of creating their own database connections.
-"""
+"""Database connection setup for the application."""
 
 import os
 
@@ -19,5 +14,11 @@ SessionLocal = sessionmaker(bind=engine)
 
 
 def get_session():
+    """Yield a database session for request-scoped work.
+
+    Yields:
+        Session: SQLAlchemy session bound to the application engine.
+    """
+
     with SessionLocal() as session:
         yield session

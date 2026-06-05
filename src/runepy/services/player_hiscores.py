@@ -1,3 +1,5 @@
+"""Service functions for player hiscore workflows."""
+
 from runepy.clients.runescape import fetch_player_hiscores
 from runepy.db.hiscore_snapshots import (
     get_player_stat_changes,
@@ -17,14 +19,27 @@ STAT_CHANGE_WINDOWS = {
 
 
 class InvalidStatsWindowError(ValueError):
+    """Represent an unsupported stat change window."""
+
     pass
 
 
 class StoredPlayerNotFoundError(LookupError):
+    """Represent a player with no stored hiscore snapshots."""
+
     pass
 
 
 def parse_stat_change_window(window: str) -> str:
+    """Translate a public stat window into a database interval.
+
+    Args:
+        window (str): Public stat change window key.
+
+    Returns:
+        str: Postgres interval value for the requested window.
+    """
+
     try:
         return STAT_CHANGE_WINDOWS[window]
     except KeyError as exc:
@@ -32,6 +47,15 @@ def parse_stat_change_window(window: str) -> str:
 
 
 async def fetch_and_store_player_hiscores(player_name: str) -> PlayerHiscores:
+    """Fetch and persist current hiscore data for a RuneScape player.
+
+    Args:
+        player_name (str): RuneScape display name to snapshot.
+
+    Returns:
+        PlayerHiscores: Current hiscore data saved for the player.
+    """
+
     hiscores = await fetch_player_hiscores(player_name)
 
     with SessionLocal() as session:
@@ -42,6 +66,16 @@ async def fetch_and_store_player_hiscores(player_name: str) -> PlayerHiscores:
 
 
 def read_player_stat_changes(player_name: str, window: str) -> PlayerStatChanges:
+    """Read stored stat changes for a RuneScape player.
+
+    Args:
+        player_name (str): RuneScape display name to read.
+        window (str): Rolling time window for comparing stored snapshots.
+
+    Returns:
+        PlayerStatChanges: Stat changes calculated within the requested window.
+    """
+
     window_interval = parse_stat_change_window(window)
 
     with SessionLocal() as session:

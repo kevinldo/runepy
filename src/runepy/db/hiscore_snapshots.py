@@ -1,11 +1,4 @@
-"""Database operations for RuneScape hiscore data.
-
-This module is responsible for saving and reading player hiscore snapshots
-using the contracted Postgres schema. It should contain the SQL/database logic
-for players, fetch records, skills, activities, and their snapshot tables,
-keeping that persistence logic separate from FastAPI routes and RuneScape API
-client code.
-"""
+"""Database operations for RuneScape hiscore data."""
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -19,6 +12,16 @@ from runepy.models.hiscores import (
 
 
 def save_player_hiscore_snapshot(session: Session, hiscores: PlayerHiscores) -> int:
+    """Save a player hiscore snapshot and related stat rows.
+
+    Args:
+        session (Session): Active SQLAlchemy session for database writes.
+        hiscores (PlayerHiscores): Player hiscore data to persist.
+
+    Returns:
+        int: Database identifier for the created fetch record.
+    """
+
     player_id = session.execute(
         text("""
             insert into players (display_name)
@@ -116,7 +119,18 @@ def get_player_stat_changes(
     window: str,
     window_interval: str,
 ) -> PlayerStatChanges | None:
-    """Read earliest-to-latest stat changes for a stored player and window."""
+    """Read earliest-to-latest stat changes for a stored player and window.
+
+    Args:
+        session (Session): Active SQLAlchemy session for database reads.
+        player_name (str): RuneScape display name to read.
+        window (str): Public stat change window key.
+        window_interval (str): Postgres interval value for the requested window.
+
+    Returns:
+        PlayerStatChanges | None: Calculated stat changes, or None if the
+        player has no stored snapshots.
+    """
 
     player = (
         session.execute(
@@ -253,12 +267,31 @@ def get_player_stat_changes(
 
 
 def _rank_delta(latest_rank: int | None, earliest_rank: int | None) -> int | None:
+    """Calculate rank movement when both rank values are present.
+
+    Args:
+        latest_rank (int | None): Latest stored rank value.
+        earliest_rank (int | None): Earliest stored rank value.
+
+    Returns:
+        int | None: Rank delta, or None when either rank is missing.
+    """
+
     if latest_rank is None or earliest_rank is None:
         return None
     return latest_rank - earliest_rank
 
 
 def _skill_change_from_row(row) -> SkillStatChange:
+    """Build a skill stat change model from a database row.
+
+    Args:
+        row (Mapping): Database row containing earliest and latest skill values.
+
+    Returns:
+        SkillStatChange: Skill change model for one skill.
+    """
+
     return SkillStatChange(
         name=row["name"],
         earliest_fetched_at=row["earliest_fetched_at"],
@@ -276,6 +309,15 @@ def _skill_change_from_row(row) -> SkillStatChange:
 
 
 def _activity_change_from_row(row) -> ActivityStatChange:
+    """Build an activity stat change model from a database row.
+
+    Args:
+        row (Mapping): Database row containing earliest and latest activity values.
+
+    Returns:
+        ActivityStatChange: Activity change model for one activity.
+    """
+
     return ActivityStatChange(
         name=row["name"],
         earliest_fetched_at=row["earliest_fetched_at"],
