@@ -1,0 +1,114 @@
+# RunePy v1 Backend Test Plan
+
+## Summary / Context
+
+RunePy v1 is a backend-only FastAPI and Postgres service for RuneScape hiscore tracking. The backend fetches live player hiscores from RuneScape, stores timestamped snapshots, and returns stat changes across fixed rolling windows.
+
+This test plan translates the v1 PRD into pytest-ready test cases. Each case is scoped so it can map cleanly to a pytest function, a small pytest group, a DB-backed integration test, or an explicit manual smoke check.
+
+Only `P1` and `P2` priorities are used:
+
+- `P1`: required for backend v1 confidence.
+- `P2`: useful only when it protects against a realistic setup, documentation, or operational regression.
+
+Frontend, hosting, Cloudflare, Coolify, Kubernetes-lite, and production deployment testing are out of scope for v1.
+
+## Environment
+
+Expected local test environment:
+
+- Python 3.14.
+- VS Code devcontainer.
+- Dependencies installed from `requirements.txt`.
+- Package installed in editable mode with `pip install -e .`.
+- Postgres running from `.devcontainer/docker-compose.yml` for DB integration tests.
+- `DATABASE_URL` available for `psql` migration commands.
+- `DATABASE_SESSION_URL` available for SQLAlchemy runtime code.
+
+Standard quality commands:
+
+```bash
+ruff check .
+black --check .
+python -m pytest
+```
+
+Recommended pytest implementation tools:
+
+- `pytest` for unit and integration tests.
+- `pytest.mark.asyncio` for async client tests.
+- `fastapi.testclient.TestClient` for route tests.
+- `monkeypatch` for replacing network, service, and persistence calls.
+- Shared fixtures for sample RuneScape payloads, `PlayerHiscores` objects, app clients, and DB sessions.
+
+## Current Implementation Note
+
+Current backend behavior already includes:
+
+- `GET /` health check.
+- `GET /players/{player_name}/hiscores` live RuneScape hiscore fetch.
+- `POST /players/{player_name}/hiscores/snapshots` live fetch plus snapshot persistence.
+- `GET /players/{player_name}/stats/changes?window={window}` stat-change reads for supported windows.
+- Postgres tables for players, fetches, skills, activities, skill snapshots, and activity snapshots.
+
+Known testing and implementation gaps:
+
+- Existing test coverage is placeholder-level.
+- Fetch-skip/rate-limit behavior based on XP gain is required by the PRD but is not implemented yet.
+- Fetch-skip tests should be written before or alongside that feature.
+- Route tests should avoid real RuneScape network calls by monkeypatching service/client functions.
+- DB integration tests should be used only where SQL behavior matters.
+
+Test type definitions:
+
+- `Unit`: pure function, model, or service test.
+- `Async Unit`: async function test using `pytest.mark.asyncio`.
+- `Route`: FastAPI route test using `TestClient` and monkeypatching.
+- `DB Integration`: test using a migrated test database/session fixture.
+- `Quality Gate`: command-level check.
+- `Manual Smoke`: local setup check that may not be automated immediately.
+
+## Test Cases
+
+| Priority | Test Type | Test Name | Test Steps | Expected Output | Preconditions | Risk Analysis |
+| --- | --- | --- | --- | --- | --- | --- |
+| P1 | Route | Health check returns OK | Create `TestClient(app)`; call `GET /`. | HTTP `200`; body is `{"status": "ok"}`. | App imports successfully. | Confirms app boot and route registration. |
+| P1 | Async Unit | RuneScape client parses valid hiscores | Mock `httpx.AsyncClient.get` to return valid JSON; call `fetch_player_hiscores`. | Returns `PlayerHiscores` with expected name, skills, and activities. | Valid sample hiscore payload. | Core external client behavior. |
+| P1 | Async Unit | RuneScape client handles missing player | Mock upstream `404`; call `fetch_player_hiscores`. | Raises `PlayerNotFoundError`. | Mocked response object. | Required error mapping for invalid player names. |
+| P1 | Async Unit | RuneScape client handles request failure | Mock `httpx.RequestError`; call `fetch_player_hiscores`. | Raises `RuneScapeUnavailableError`. | Mocked request failure. | Prevents network failures from leaking raw exceptions. |
+| P1 | Async Unit | RuneScape client handles upstream server error | Mock upstream `500`; call `fetch_player_hiscores`. | Raises `RuneScapeUnavailableError`. | Mocked response object. | Covers unstable upstream service behavior. |
+| P1 | Async Unit | RuneScape client rejects invalid payload | Mock HTTP `200` with malformed/schema-invalid JSON. | Raises `RuneScapeClientError`. | Invalid sample payload. | Prevents bad upstream data from entering app models. |
+| P1 | Route | Live hiscore route returns success | Monkeypatch `fetch_player_hiscores`; call `GET /players/test/hiscores`. | HTTP `200`; response matches mocked `PlayerHiscores`. | App test client. | Verifies route response contract without network dependency. |
+| P1 | Route | Live hiscore route maps missing player | Monkeypatch route action to raise `PlayerNotFoundError`; call endpoint. | HTTP `404`. | App test client. | Verifies public API error contract. |
+| P1 | Route | Live hiscore route maps unavailable upstream | Monkeypatch route action to raise `RuneScapeUnavailableError`; call endpoint. | HTTP `502`. | App test client. | Verifies external failure handling. |
+| P1 | Route | Live hiscore route maps invalid upstream data | Monkeypatch route action to raise `RuneScapeClientError`; call endpoint. | HTTP `502`. | App test client. | Verifies invalid upstream payload handling. |
+| P1 | Unit | Supported stat windows map to intervals | Call `parse_stat_change_window` for `24h`, `7d`, `30d`, `3m`, `6m`, `1y`. | Returns expected interval strings. | No DB required. | Protects query-window behavior. |
+| P1 | Unit | Unsupported stat window raises error | Call `parse_stat_change_window("bad")`. | Raises `InvalidStatsWindowError`. | No DB required. | Required validation path. |
+| P1 | Route | Unsupported stat window returns 400 | Monkeypatch service only if needed; call stat-change route with `window=bad`. | HTTP `400`; detail names supported windows. | App test client. | Verifies API-level validation. |
+| P1 | Route | Unstored player returns 404 | Monkeypatch `read_player_stat_changes` to raise `StoredPlayerNotFoundError`; call stat-change route. | HTTP `404`. | App test client. | Common first-use behavior. |
+| P1 | Route | Snapshot route returns fetched hiscores | Monkeypatch `fetch_and_store_player_hiscores`; call snapshot endpoint. | HTTP `200`; response matches `PlayerHiscores`. | App test client. | Public contract for snapshot creation. |
+| P1 | DB Integration | Snapshot creates player and fetch rows | Use test DB session; call `save_player_hiscore_snapshot` with sample hiscores; query `players` and `fetches`. | One player row and one fetch row exist. | Migrated test DB. | Persistence foundation. |
+| P1 | DB Integration | Snapshot stores skill rows | Save sample hiscores; query `skills` and `player_skill_snapshots`. | Expected skill dimension and snapshot rows exist. | Migrated test DB. | Required for stat-change calculations. |
+| P1 | DB Integration | Snapshot stores activity rows | Save sample hiscores; query `activities` and `player_activity_snapshots`. | Expected activity dimension and snapshot rows exist. | Migrated test DB. | Ensures non-skill hiscore data persists. |
+| P1 | DB Integration | Snapshot reuses dimensions | Save two snapshots with same skill/activity names; count dimension rows. | Skill/activity dimension counts do not duplicate. | Migrated test DB. | Prevents data drift and duplicate dimensions. |
+| P1 | DB Integration | Stat changes calculate skill deltas | Seed two skill snapshots in same window; call `get_player_stat_changes`. | XP, level, rank, and timestamps compare earliest to latest. | Migrated test DB with deterministic seed data. | Core analytics behavior. |
+| P1 | DB Integration | Stat changes calculate activity deltas | Seed two activity snapshots in same window; call `get_player_stat_changes`. | Score, rank, and timestamps compare earliest to latest. | Migrated test DB with deterministic seed data. | Ensures activity changes are covered. |
+| P1 | DB Integration | Stat changes return none for missing stored player | Call `get_player_stat_changes` for absent player. | Returns `None`. | Empty or isolated test DB. | Supports service-level `404` behavior. |
+| P1 | Unit | Fetch-skip detects no XP gain | Compare latest stored snapshot values with fetched hiscores containing same XP. | Decision says skip storing. | Fetch-skip helper exists. | Required v1 storage-control behavior. |
+| P1 | Unit | Fetch-skip stores on XP gain | Compare latest stored snapshot values with fetched hiscores containing any increased skill XP. | Decision says store snapshot. | Fetch-skip helper exists. | Prevents lost progress data. |
+| P1 | Unit | Fetch-skip ignores rank-only change | Compare same XP with changed ranks. | Decision says skip storing. | Fetch-skip helper exists. | Matches PRD rule to ignore rank-only movement. |
+| P1 | Quality Gate | Backend quality commands pass | Run `ruff check .`, `black --check .`, and `python -m pytest`. | All commands pass. | Dependencies installed. | Minimum confidence before v1 completion. |
+| P2 | Manual Smoke | Migration initializes fresh DB | Run `psql "$DATABASE_URL" -f db/migrations/001_init_schema.sql` against empty local DB. | Schema, tables, and indexes are created. | Devcontainer DB running. | P2 because it is environment-dependent, but protects onboarding. |
+| P2 | Manual Smoke | README env vars match PRD | Review README setup instructions for `DATABASE_URL` and `DATABASE_SESSION_URL`. | README and PRD describe variables consistently. | README and PRD present. | P2 because it is documentation validation, but avoids setup confusion. |
+| P2 | Unit | Missing `DATABASE_SESSION_URL` fails clearly | Import DB session config in isolated env without the variable. | Clear configuration failure. | Test can isolate module import/env state. | P2 because normal runtime should set it, but failure quality matters. |
+
+## Scaling Guidance
+
+- Implement `P1` tests first; treat them as required for backend v1.
+- Keep most route tests network-free by monkeypatching service/client calls.
+- Keep RuneScape client tests mocked at the HTTP layer.
+- Use DB integration tests only where SQL behavior matters.
+- Prefer small pytest functions: one expected behavior per test.
+- Use shared fixtures for sample hiscore payloads, `PlayerHiscores` objects, app client, and test DB session.
+- Fetch-skip tests should be written before or alongside the fetch-skip implementation.
+- `P2` tests should stay rare and must justify their cost or environmental complexity.

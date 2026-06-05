@@ -1,0 +1,273 @@
+# RunePy Backend MVP PRD
+
+## 1. Overview
+
+RunePy v1 is a backend-only RuneScape hiscore tracking service. It provides a FastAPI API that can fetch live player hiscore data from RuneScape, store timestamped snapshots in Postgres, and return stat changes across supported rolling time windows.
+
+The goal of v1 is not to build the final user-facing product. The goal is to finish a reliable backend foundation that can later support a Next.js frontend, scheduled fetches, hosting, and richer player analytics.
+
+## 2. Problem
+
+RuneScape hiscores show a player's current stats, but they do not directly answer practical progress questions such as:
+
+- How much XP did this player gain in the last 24 hours?
+- Which skills changed over the last week or month?
+- Did a player actually gain XP, or did only their rank move?
+- Can historical hiscore data be queried consistently through an API?
+
+RunePy should solve this by storing snapshots over time and exposing simple backend endpoints for current hiscores and historical deltas.
+
+## 3. Users
+
+The primary v1 user is the project owner as a solo builder and API consumer. Secondary future users include frontend clients, automation jobs, and other developers who may contribute to the project.
+
+For v1, developer experience matters more than polished end-user experience. The service should be easy to run locally, easy to test, and predictable enough to build a frontend on top of later.
+
+## 4. Goals
+
+- Provide a working FastAPI backend for RuneScape hiscore data.
+- Fetch current player hiscores from RuneScape's public hiscore API.
+- Persist player hiscore snapshots in Postgres.
+- Return stat changes for fixed rolling windows.
+- Keep the public backend API stable enough for a future frontend.
+- Establish meaningful backend test coverage before expanding product scope.
+- Document local development and database setup clearly.
+
+## 5. Non-Goals
+
+- Build the Next.js frontend.
+- Build a production deployment container.
+- Deploy to a hosted server.
+- Configure Cloudflare, Coolify, Kubernetes-lite, or other hosting workflows.
+- Add authentication or user accounts.
+- Add scheduled background jobs.
+- Support every possible RuneScape hiscore variant.
+- Build advanced visualizations or frontend-specific view models.
+
+These may become post-v1 milestones once the backend MVP is dependable.
+
+## 6. Current State
+
+RunePy currently contains a small FastAPI backend with a Postgres persistence layer.
+
+Implemented API behavior:
+
+- `GET /`: returns a basic health response: `{"status": "ok"}`.
+- `GET /players/{player_name}/hiscores`: fetches live hiscore data from RuneScape and returns a `PlayerHiscores` response with player name, skills, and activities.
+- `POST /players/{player_name}/hiscores/snapshots`: fetches live hiscore data from RuneScape, stores a snapshot in Postgres, and returns the fetched `PlayerHiscores` response.
+- `GET /players/{player_name}/stats/changes?window={window}`: reads stored snapshots for a player and returns earliest-to-latest deltas for supported windows.
+
+Supported stat-change windows:
+
+- `24h`
+- `7d`
+- `30d`
+- `3m`
+- `6m`
+- `1y`
+
+Implemented data model:
+
+- `players`: stores unique display names and fetch timestamps.
+- `fetches`: stores each fetch attempt for a player.
+- `skills`: stores unique skill names.
+- `activities`: stores unique activity names.
+- `player_skill_snapshots`: stores rank, level, and XP for each skill at a fetch time.
+- `player_activity_snapshots`: stores rank and score for each activity at a fetch time.
+
+Implemented developer tooling:
+
+- Python 3.14 devcontainer.
+- Postgres 18.4 service in Docker Compose.
+- pgAdmin service in Docker Compose.
+- CI workflow that installs dependencies, runs Ruff, checks Black formatting, and runs pytest.
+
+Known gaps:
+
+- Test coverage is currently placeholder-level.
+- Fetch-skip/rate-limit behavior based on XP gain has not been implemented.
+- README and PRD must stay aligned on database environment variables:
+  - `DATABASE_URL` is used by `psql` commands.
+  - `DATABASE_SESSION_URL` is used by SQLAlchemy runtime code.
+- Database migration instructions need to remain repeatable for local setup.
+
+## 7. Functional Requirements
+
+### 7.1 Health Check
+
+RunePy must expose `GET /` as a lightweight backend health check.
+
+Acceptance criteria:
+
+- The endpoint returns HTTP `200`.
+- The response body is `{"status": "ok"}`.
+- The endpoint does not require database connectivity.
+
+### 7.2 Live Hiscore Fetch
+
+RunePy must expose `GET /players/{player_name}/hiscores` to fetch current hiscore data from RuneScape.
+
+Acceptance criteria:
+
+- The endpoint accepts a player display name in the path.
+- The endpoint calls RuneScape's public hiscore API.
+- Successful responses validate into the existing `PlayerHiscores` model.
+- Missing RuneScape players return HTTP `404`.
+- RuneScape request failures return HTTP `502`.
+- Invalid RuneScape response payloads return HTTP `502`.
+- The response model remains compatible with the current `name`, `skills`, and `activities` fields.
+
+### 7.3 Snapshot Creation
+
+RunePy must expose `POST /players/{player_name}/hiscores/snapshots` to fetch and persist a player hiscore snapshot.
+
+Acceptance criteria:
+
+- A successful snapshot creates or reuses a player row by display name.
+- A successful snapshot creates one fetch row for the player.
+- Skill dimension rows are reused by skill name.
+- Activity dimension rows are reused by activity name.
+- Skill snapshot rows are written for the fetch.
+- Activity snapshot rows are written for the fetch.
+- `players.last_fetched_at` is updated after a successful snapshot.
+- Duplicate skill or activity dimension records are not created for repeat snapshots.
+- The endpoint returns the fetched `PlayerHiscores` response.
+
+### 7.4 Stat Change Queries
+
+RunePy must expose `GET /players/{player_name}/stats/changes?window={window}` to return stored stat changes.
+
+Acceptance criteria:
+
+- Supported windows are exactly `24h`, `7d`, `30d`, `3m`, `6m`, and `1y`.
+- Unsupported windows return HTTP `400`.
+- Players with no stored snapshots return HTTP `404`.
+- Successful responses validate into the existing `PlayerStatChanges` model.
+- Each skill change includes earliest/latest fetch timestamps, rank, level, XP, and their deltas.
+- Each activity change includes earliest/latest fetch timestamps, rank, score, and their deltas.
+- Deltas compare the earliest stored point in the window against the latest stored point in the window.
+
+### 7.5 Fetch-Skip Rule
+
+RunePy v1 must add a fetch-skip or rate-limit rule based on XP movement.
+
+The intended behavior is:
+
+- If the latest stored snapshot and the newly fetched hiscore data show no XP gain, RunePy should be able to skip storing a redundant snapshot.
+- Rank-only changes should not count as meaningful progress.
+- The rule should evaluate XP changes across skills, not rank changes.
+
+Acceptance criteria:
+
+- A repeated fetch with no XP gain does not create unnecessary duplicate progress snapshots.
+- A fetch with any skill XP gain stores a new snapshot.
+- Rank-only changes do not force a new progress snapshot.
+- The API behavior remains predictable and documented.
+- Tests cover no-XP, XP-gain, and rank-only scenarios.
+
+Implementation note:
+
+- The final implementation may either expose the skip result in the snapshot endpoint response or keep the existing `PlayerHiscores` response and document the persistence behavior. The public API should not be changed unless the test plan and README are updated with the new contract.
+
+### 7.6 Database Setup
+
+RunePy must provide a repeatable local database setup path.
+
+Acceptance criteria:
+
+- The devcontainer starts a Postgres service.
+- The migration at `db/migrations/001_init_schema.sql` can initialize the schema from an empty database.
+- README setup commands identify the correct environment variables:
+  - `DATABASE_URL` for `psql`.
+  - `DATABASE_SESSION_URL` for application runtime.
+- The app fails clearly if `DATABASE_SESSION_URL` is missing.
+
+## 8. Non-Functional Requirements
+
+### 8.1 Local Development
+
+- The backend must run inside the VS Code devcontainer.
+- Dependencies must install from `requirements.txt`.
+- The package must remain installable in editable mode.
+- The backend must run with `uvicorn runepy.main:app --reload`.
+
+### 8.2 Code Quality
+
+- Ruff must pass.
+- Black formatting checks must pass.
+- The code should preserve the current separation between API routes, RuneScape client code, service/business logic, database persistence, and Pydantic models.
+
+### 8.3 Testing
+
+The placeholder test must be replaced or supplemented with meaningful backend tests.
+
+Required test coverage:
+
+- RuneScape client parsing success.
+- RuneScape client error handling for player not found, upstream unavailable, and invalid payloads.
+- API route behavior for health check, live hiscore fetch, live hiscore fetch errors, stat window validation, and unstored player response.
+- Snapshot persistence for player/fetch creation, skill snapshots, activity snapshots, and dimension row reuse.
+- Stat-change calculation for earliest-to-latest skill deltas, activity deltas, and supported window mapping.
+- Fetch-skip rule behavior for no XP gain, XP gain, and rank-only changes.
+
+### 8.4 CI
+
+CI must continue to run on pushes and pull requests to `main`.
+
+Required CI checks:
+
+- Install dependencies.
+- Run `ruff check .`.
+- Run `black --check .`.
+- Run `python -m pytest`.
+
+## 9. Public API Contract
+
+The current v1 public API should remain stable unless a bug is found.
+
+Endpoints:
+
+- `GET /`
+- `GET /players/{player_name}/hiscores`
+- `POST /players/{player_name}/hiscores/snapshots`
+- `GET /players/{player_name}/stats/changes?window={window}`
+
+Models:
+
+- `PlayerHiscores`
+- `SkillStat`
+- `ActivityStat`
+- `PlayerStatChanges`
+- `SkillStatChange`
+- `ActivityStatChange`
+
+Error behavior:
+
+- `400`: unsupported stat-change window.
+- `404`: live RuneScape player not found.
+- `404`: stored player snapshots not found.
+- `502`: RuneScape unavailable or invalid upstream data.
+
+## 10. V1 Completion Checklist
+
+- [ ] README setup instructions are aligned with runtime configuration.
+- [ ] Database migration can initialize a fresh local database.
+- [ ] All documented endpoints work locally.
+- [ ] Error behavior matches the PRD.
+- [ ] Snapshot persistence is covered by tests.
+- [ ] Stat-change calculation is covered by tests.
+- [ ] Fetch-skip/rate-limit behavior based on XP gain is implemented.
+- [ ] Rank-only changes are ignored for fetch-skip decisions.
+- [ ] Placeholder test coverage is replaced or supplemented.
+- [ ] CI passes with Ruff, Black, and pytest.
+
+## 11. Post-v1 Backlog
+
+- Build the Next.js frontend.
+- Define frontend development requirements.
+- Add scheduled or background snapshot fetching.
+- Add deployment container support.
+- Deploy the backend and future frontend.
+- Add hosting and DNS configuration.
+- Add production observability and backups.
+- Expand analytics beyond basic earliest-to-latest deltas.
