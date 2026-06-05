@@ -1,5 +1,1 @@
-"""Placeholder so CI can stop complaining"""
-
-
-def test_placeholder():
-    assert True
+"""Legacy placeholder test file replaced by focused backend coverage."""
