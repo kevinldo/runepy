@@ -1,0 +1,55 @@
+name: runepy
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspaces/runepy:cached
+    command: sleep infinity
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://runepy:runepy@db:5432/runepy_db
+      DATABASE_SESSION_URL: postgresql+psycopg://runepy:runepy@db:5432/runepy_db
+    networks:
+      - runepy-network
+  db:
+    image: postgres:18.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: runepy_db
+      POSTGRES_USER: runepy
+      POSTGRES_PASSWORD: runepy
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U runepy -d runepy_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - runepy-network
+  pgadmin:
+    image: dpage/pgadmin4:9.15
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: pgadmin
+    ports:
+      - "5001:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - runepy-network
+volumes:
+  postgres-data:
+  pgadmin-data:
+networks:
+  runepy-network:

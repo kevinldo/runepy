@@ -1,0 +1,63 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/python
+{
+	"name": "Python 3.14",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "runServices": ["app", "db"],
+  "workspaceFolder": "/workspaces/runepy",
+	// Features to add to the dev container. More info: https://containers.dev/features.
+  // "features": {},
+	// Configure tool-specific properties.
+	"customizations": {
+		// Configure properties specific to VS Code.
+		"vscode": {
+      "settings": {
+        "editor.codeActionsOnSave": {
+          "source.fixAll.ruff": "explicit"
+        },
+        
+        "python.defaultInterpreterPath": ".venv/bin/python",
+        "python.terminal.activateEnvironment": true,
+
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": ["tests"],
+
+        "[python]": {
+          "editor.defaultFormatter": "ms-python.black-formatter",
+          "editor.formatOnSave": true,
+          "editor.rulers": [100]
+        },
+
+        "ruff.lineLength": 100,
+        "ruff.lint.enable": true
+
+      },
+			"extensions": [
+				"aaron-bond.better-comments",             // Improve visuals and workflow of code comments
+        "charliermarsh.ruff",                     // Black: opinionated Python code formatter for consistent style
+				"christian-kohler.path-intellisense",     // Autocompletes filenames
+				"davidanson.vscode-markdownlint",         // Markdown linter
+				"dkaba.copy-name-of-current-branch",      // Copy name of current branch extension
+				"eamodio.gitlens",                        // GitLens extension for Git
+				"esbenp.prettier-vscode",                 // Pretty formatter for JSON, HTML, CSS, Markdown, YAML
+				"formulahendry.auto-close-tag",           // HTML tag closer
+				"formulahendry.auto-rename-tag",          // HTML paired tag renaming
+				"formulahendry.code-runner",              // Code Runner extension
+				"kevinrose.vsc-python-indent",            // Correct Python indentation
+        "ms-python.black-formatter",              // Ruff: extremely fast Python linter and code quality tool
+        "ms-python.python",                       // Python extension
+				"ms-azuretools.vscode-docker",            // Docker extension
+				"njpwerner.autodocstring",                // Python auto docstring generator
+				"oderwat.indent-rainbow",                 // Makes indents easier to read
+				"quicktype.quicktype",                    // Ability to paste JSON as code			
+				"streetsidesoftware.code-spell-checker",  // Spell checker extension
+				"thinker.sort-json"                       // JSON sorter
+			]
+		}
+	},
+	// Use 'postCreateCommand' to run commands after the container is created.
+	"postCreateCommand": "python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt && pip install -e ."
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "root"
+}
